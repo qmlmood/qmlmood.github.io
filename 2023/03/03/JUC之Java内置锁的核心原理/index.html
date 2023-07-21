@@ -1,0 +1,532 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>JUC之Java内置锁的核心原理 | Mood的个人博客</title><meta name="author" content="Mood"><meta name="copyright" content="Mood"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="[TOC] JUC之Java内置锁的核心原理​		Java内置锁是一个互斥锁，这就意味着最多只有一个线程能够获 得该锁，当线程B尝试去获得线程A持有的内置锁时，线程B必须等待或 者阻塞，直到线程A释放这个锁，如果线程A不释放这个锁，那么线程B 将永远等待下去。 ​		Java中每个对象都可以用作锁，这些锁称为内置锁。线程进入同 步代码块或方法时会自动获得该锁，在退出同步代码块或方法时会释 放该锁。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JUC之Java内置锁的核心原理">
+<meta property="og:url" content="http://example.com/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/index.html">
+<meta property="og:site_name" content="Mood的个人博客">
+<meta property="og:description" content="[TOC] JUC之Java内置锁的核心原理​		Java内置锁是一个互斥锁，这就意味着最多只有一个线程能够获 得该锁，当线程B尝试去获得线程A持有的内置锁时，线程B必须等待或 者阻塞，直到线程A释放这个锁，如果线程A不释放这个锁，那么线程B 将永远等待下去。 ​		Java中每个对象都可以用作锁，这些锁称为内置锁。线程进入同 步代码块或方法时会自动获得该锁，在退出同步代码块或方法时会释 放该锁。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg">
+<meta property="article:published_time" content="2023-03-03T03:24:56.000Z">
+<meta property="article:modified_time" content="2023-07-21T13:53:53.287Z">
+<meta property="article:author" content="Mood">
+<meta property="article:tag" content="锁">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":true,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Mood","link":"链接: ","source":"来源: Mood的个人博客","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#1f1f1f","position":"bottom-left"},
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'JUC之Java内置锁的核心原理',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-07-21 21:53:53'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.3.0"><link rel="alternate" href="/atom.xml" title="Mood的个人博客" type="application/atom+xml">
+</head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://tt.xtt.ovh/imgs/2023/07/20/b61b1bdd18dd8f8e.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">26</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li><li><a class="site-page child" href="/images"><i class="fa-fw fas fa-images"></i><span> 图库</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mood的个人博客"><span class="site-name">Mood的个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> 电影</span></a></li><li><a class="site-page child" href="/images"><i class="fa-fw fas fa-images"></i><span> 图库</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">JUC之Java内置锁的核心原理</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-03-03T03:24:56.000Z" title="发表于 2023-03-03 11:24:56">2023-03-03</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-07-21T13:53:53.287Z" title="更新于 2023-07-21 21:53:53">2023-07-21</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/JUC/">JUC</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="leancloud_visitors" id="/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/" data-flag-title="JUC之Java内置锁的核心原理"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span class="leancloud-visitors-count"><i class="fa-solid fa-spinner fa-spin"></i></span></span><span class="post-meta-separator">|</span><span class="post-meta-commentcount"><i class="far fa-comments fa-fw post-meta-icon"></i><span class="post-meta-label">评论数:</span><a href="/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/#post-comment" itemprop="discussionUrl"><span class="valine-comment-count" data-xid="/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/" itemprop="commentCount"><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>[TOC]</p>
+<h3 id="JUC之Java内置锁的核心原理"><a href="#JUC之Java内置锁的核心原理" class="headerlink" title="JUC之Java内置锁的核心原理"></a>JUC之Java内置锁的核心原理</h3><p>​		Java内置锁是一个互斥锁，这就意味着最多只有一个线程能够获 得该锁，当线程B尝试去获得线程A持有的内置锁时，线程B必须等待或 者阻塞，直到线程A释放这个锁，如果线程A不释放这个锁，那么线程B 将永远等待下去。</p>
+<p>​		Java中每个对象都可以用作锁，这些锁称为内置锁。线程进入同 步代码块或方法时会自动获得该锁，在退出同步代码块或方法时会释 放该锁。获得内置锁的唯一途径就是进入这个锁保护的同步代码块或 方法。</p>
+<h4 id="Java对象结构"><a href="#Java对象结构" class="headerlink" title="Java对象结构"></a>Java对象结构</h4><p>Java对象(Object实例)结构包括三部分：对象头、对象体和对齐字节。</p>
+<p>结构如下：</p>
+<p><img src="/..%5Cimg%5Cjava%E5%9B%BE%E7%89%87%5Cjava%E5%AF%B9%E8%B1%A1%E7%BB%93%E6%9E%84.png"></p>
+<h5 id="对象头"><a href="#对象头" class="headerlink" title="对象头"></a>对象头</h5><p>​		对象头包括三个字段，第一个字段叫作Mark Word(标记字),用于存储自身运行时的数据，例如GC标志位、哈希码、锁状态信息等。</p>
+<p>​		第二个字段叫作Class Pointer(类对象指针)，用于存放方法区Class对象的地址，虚拟机通过这个指针来确定这个对象是哪个类的实例。</p>
+<p>​		第三个字段叫作Array Length(数组长度)。如果对象是一个Java数组，那这个字段必须要有，用于记录数组长度的数据；如果对象不是一个Java数组，那么此字段不存在，所以这是一个可选字段。</p>
+<h5 id="对象体"><a href="#对象体" class="headerlink" title="对象体"></a>对象体</h5><p>​		对象体包含对象的实例变量(成员变量)，用于成员属性值，包括父类的成员属性值。这部分内存按4字节对齐。对象体是对象的主体部分，占用的内存空间大小取决于对象的属性数量和类型。</p>
+<h5 id="对齐字节"><a href="#对齐字节" class="headerlink" title="对齐字节"></a>对齐字节</h5><p>​		对齐字节也叫作填充对齐，其作用是用来保证Java对象所占内存 字节数为8的倍数HotSpot VM的内存管理要求对象起始地址必须是8字 节的整数倍。对象头本身是8的倍数，当对象的实例变量数据不是8的 倍数时，便需要填充数据来保证8字节的对齐。</p>
+<p>​		对齐字节并不是必然存在的，也没有特别的含义，它仅仅起 着占位符的作用。当对象实例数据部分没有对齐（8字节的整数倍） 时，就需要通过对齐填充来补全。</p>
+<h4 id="Mark-Word的结构信息"><a href="#Mark-Word的结构信息" class="headerlink" title="Mark Word的结构信息"></a>Mark Word的结构信息</h4><p>​		Java内置锁涉及很多重要信息，这些都存放在对象头的Mark Word字段中。Mark Word不会受到Oop指针压缩选项的影响。Java内置锁的状态总共有4种，级别由低到高依次为：无锁、偏向锁、轻量级锁和重量级锁。在JDK1.6之前只有重量级锁，之后才引入偏向锁和轻量级锁。4种锁状态会随着竞争的情况逐渐升级，而且不可逆，即只能进行锁升级，不会发生锁降级。</p>
+<p>不同锁状态下32位Mark Work的结构信息：</p>
+<p>![](..\img\java图片\不同锁状态下32位Mark Word的结构信息.png)</p>
+<p>不同锁状态下64位Mark Work的结构信息：</p>
+<p>![](..\img\java图片\不同锁状态下64位Mark Work的结构信息.png)</p>
+<h5 id="64位Mark-Word的构成"><a href="#64位Mark-Word的构成" class="headerlink" title="64位Mark Word的构成"></a>64位Mark Word的构成</h5><ol>
+<li>lock：锁状态标记位，占两个二进制位。该标记的 值不同，整个Mark Word表示的含义就不同。</li>
+<li>biased_lock：对象是否启用偏向锁标记，只占1个二进制 位。为1时表示对象启用偏向锁，为0时表示对象没有偏向锁。</li>
+<li>age：4位的Java对象分代年龄。在GC中，对象在Survivor区 复制一次，年龄就增加1。当对象达到设定的阈值时，将会晋升到老年 代。默认情况下，并行GC的年龄阈值为15，并发GC的年龄阈值为6。由 于age只有4位，因此最大值为15，这就是-XX:MaxTenuringThreshold 选项最大值为15的原因。</li>
+<li>identity_hashcode：31位的对象标识HashCode（哈希码） 采用延迟加载技术，当调用Object.hashCode()方法或者 System.identityHashCode()方法计算对象的HashCode后，其结果将被 写到该对象头中。当对象被锁定时，该值会移动到Monitor（监视器） 中。</li>
+<li>thread：54位的线程ID值为持有偏向锁的线程ID。</li>
+<li>epoch：偏向时间戳。</li>
+<li>ptr_to_lock_record：占62位，在轻量级锁的状态下指向栈帧中锁记录的指针。</li>
+<li>ptr_to_heavyweight_monitor：占62位，在重量级锁的状态下指向对象监视器的指针。</li>
+</ol>
+<p>32位的Mark Word与64位的Mark Word结构相似</p>
+<h4 id="偏向锁"><a href="#偏向锁" class="headerlink" title="偏向锁"></a>偏向锁</h4><p>​		如果一个同步块（或方法）没有多个线程竞争， 而且总是由同一个线程多次重入获取锁，如果每次还有阻塞线程，唤 醒CPU从用户态转为核心态，那么对于CPU是一种资源的浪费，为了解 决这类问题，就引入了偏向锁的概念。偏向锁主要解决无竞争下的锁性能问题，所谓的偏向就是偏心， 即锁会偏向于当前已经占有锁的线程。</p>
+<p>​		原理：如果不存在线程竞争的一个线程获得了锁，那么锁就进入偏向状态，此时Mark Word的结构变为偏向锁结构， 锁对象的锁标志位（lock）被改为01，偏向标志位（biased_lock）被改为1，然后线程的ID记录在锁对象的Mark Word中（使用CAS操作完 成）。以后该线程获取锁时判断一下线程ID和标志位，就可以直接进 入同步块，连CAS操作都不需要，这样就省去了大量有关锁申请的操作，从而也就提升了程序的性能。</p>
+<h5 id="偏向锁的设置"><a href="#偏向锁的设置" class="headerlink" title="偏向锁的设置"></a>偏向锁的设置</h5><p>​		如果开启了偏向锁（默认开启），那么对象创建后，markword值为0x05即最后3位为101，这时它的thread、epoch、age都为0；如果没有开启偏向锁，那么对象创建后，markword值为0x01即最后3位位001，这时它的hashcode、age都为0，第一次用到hashcode时才会赋值。使用-XX：-UseBiasedLocking可以禁用偏向锁。</p>
+<p>​		偏向锁是默认延迟的，不会在程序启动时立即生效，如果想避免延迟，可以加VM参数-XX：BiasedLockingStartupDelay&#x3D;0 来禁用延迟。</p>
+<h5 id="偏向锁的重偏向"><a href="#偏向锁的重偏向" class="headerlink" title="偏向锁的重偏向"></a>偏向锁的重偏向</h5><p>​		如果对象虽然被多个线程访问，但没有竞争，这时偏向了线程T 1 的对象仍有机会重新偏向T 2 ，重偏向会重置对象的 Thread ID。当撤销偏向锁阈值超过<strong>20</strong>次后，（<strong>从第二十次开始</strong>）jvm之后在给这些对象加锁时重新加偏向锁至新的线程。</p>
+<h5 id="偏向锁的撤销"><a href="#偏向锁的撤销" class="headerlink" title="偏向锁的撤销"></a>偏向锁的撤销</h5><p>偏向锁的撤销过程：</p>
+<ol>
+<li>在一个安全点停止拥有锁的线程。</li>
+<li>遍历线程的栈帧，检查是否存在锁记录。如果存在锁记录， 就需要清空锁记录，使其变成无锁状态，并修复锁记录指向的Mark Word，清除其线程ID。</li>
+<li>将当前锁升级成轻量级锁。</li>
+<li>唤醒当前线程。</li>
+</ol>
+<p>​		所以，如果某些临界区存在两个及两个以上的线程竞争，那么偏 向锁反而会降低性能。在这种情况下，可以在启动JVM时就把偏向锁的 默认功能关闭。</p>
+<p>撤销偏向锁的情况：</p>
+<ol>
+<li>多个线程竞争偏向锁。</li>
+<li>调用偏向锁对象的hashcode()方法或者 System.identityHashCode()方法计算对象的HashCode之后，将哈希码 放置到Mark Word中，内置锁变成无锁状态，偏向锁将被撤销。</li>
+<li>调用 wait&#x2F;notify，这个只有重量级锁才有</li>
+</ol>
+<p>当撤销偏向锁阈值超过<strong>40</strong>次后，（<strong>从第四十次开始</strong>）jvm会将整个类的所有对象都变为不可偏向的，新建的对象也会是不可偏向的。</p>
+<h5 id="偏向锁的膨胀"><a href="#偏向锁的膨胀" class="headerlink" title="偏向锁的膨胀"></a>偏向锁的膨胀</h5><p>​		如果偏向锁被占据，一旦有第二个线程争抢这个对象，因为偏向 锁不会主动释放，所以第二个线程可以看到内置锁偏向状态，这时表 明在这个对象锁上已经存在竞争了。JVM检查原来持有该对象锁的占有 线程是否依然存活，如果挂了，就可以将对象变为无锁状态，然后进 行重新偏向，偏向为抢锁线程。</p>
+<p>​		如果JVM检查到原来的线程依然存活，就进一步检查占有线程的调 用堆栈是否通过锁记录持有偏向锁。如果存在锁记录，就表明原来的 线程还在使用偏向锁，发生锁竞争，撤销原来的偏向锁，将偏向锁膨胀（INFLATING）为轻量级锁。</p>
+<h4 id="轻量级锁"><a href="#轻量级锁" class="headerlink" title="轻量级锁"></a>轻量级锁</h4><p>使用场景：如果一个对象虽然有多线程访问，但多线程访问的时间是错开的（也就是没有竞争），那么可以使用轻量级锁来优化。</p>
+<p>轻量级锁的本意是为了减少多线程进入操作系统底层的互斥锁 （Mutex Lock）的概率，并不是要替代操作系统互斥锁。所以，在争 用激烈的场景下，轻量级锁会膨胀为基于操作系统内核互斥锁实现的 重量级锁。</p>
+<h5 id="执行过程"><a href="#执行过程" class="headerlink" title="执行过程"></a>执行过程</h5><p>（1）在抢锁线程进入临界区之前，如果内置锁 （临界区的同步对象）没有被锁定，JVM首先将在抢锁线程的栈帧中建 立一个锁记录（Lock Record），用于存储对象目前Mark Word的拷 贝，这时的线程堆栈与内置锁对象头大致如图所示，</p>
+<p><img src="/..%5Cimg%5Cjava%E5%9B%BE%E7%89%87%5C%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81%E7%A4%BA%E6%84%8F%E5%9B%BE1.png"></p>
+<p>（2）然后抢锁线程将使用CAS自旋操作，尝试将内置锁对象头的Mark Word的ptr_to_lock_record（锁记录指针）更新为抢锁线程栈帧中锁 记录的地址，如果这个更新执行成功了，这个线程就拥有了这个对象锁。然后JVM将Mark Word中的lock标记位改为00（轻量级锁标志）， 即表示该对象处于轻量级锁状态。</p>
+<p>（3）抢锁成功之后，JVM会将Mark Word 中原来的锁对象信息（如哈希码等）保存在抢锁线程锁记录的 Displaced Mark Word（可以理解为放错地方的Mark Word）字段中， 再将抢锁线程中锁记录的owner指针指向锁对象。</p>
+<p>在轻量级锁抢占成功之后，锁记录和对象头的状态如图所示，</p>
+<p><img src="/..%5Cimg%5Cjava%E5%9B%BE%E7%89%87%5C%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81%E7%A4%BA%E6%84%8F%E5%9B%BE2.png"></p>
+<p>如果cas失败，有两种情况：</p>
+<ol>
+<li>如果是其他线程已经持有了该Object的轻量级锁，这时表明有就竞争，进入锁膨胀过程</li>
+<li>如果是自己执行了 synchronized 锁重入，那么再添加一条 Lock Record 作为重入的计数</li>
+</ol>
+<p>当退出 synchronized 代码块（解锁时）如果有取值为null的锁记录，表示有重入，这时重置锁记录，表示重入计数减一。</p>
+<p>当退出 synchronized 代码块（解锁时）锁记录的值不为null，这时使用 cas 将 Mark Word 的值恢复给对象头，成功则解锁成功，失败说明轻量级锁已经进行了锁膨胀或者已经升级为重量级锁，进入重量级锁的解锁流程。</p>
+<h5 id="轻量级锁的分类"><a href="#轻量级锁的分类" class="headerlink" title="轻量级锁的分类"></a>轻量级锁的分类</h5><p>轻量级锁主要有两种：普通自旋锁和自适应自旋锁。</p>
+<h6 id="普通自旋锁"><a href="#普通自旋锁" class="headerlink" title="普通自旋锁"></a>普通自旋锁</h6><p>​		普通自旋锁指当有线程来竞争锁时，抢锁线程会在原 地循环等待，而不是被阻塞，直到那个占有锁的线程释放锁之后，这 个抢锁线程才可以获得锁。</p>
+<p>​		锁在原地循环等待的时候是会消耗CPU的，就相当于在执行一个 什么也不干的空循环。所以轻量级锁适用于临界区代码耗时很短的场 景，这样线程在原地等待很短的时间就能够获得锁了。默认情况下，自旋的次数为10次，用户可以通过XX:PreBlockSpin选项来进行更改。</p>
+<h6 id="自适应自旋锁"><a href="#自适应自旋锁" class="headerlink" title="自适应自旋锁"></a>自适应自旋锁</h6><p>​		自适应自旋锁就是等待线程空循环的自旋次数并非是固定 的，而是会动态地根据实际情况来改变自旋等待的次数，自旋次数由 前一次在同一个锁上的自旋时间及锁的拥有者的状态来决定。</p>
+<ul>
+<li>如果抢锁线程在同一个锁对象上之前成功获得过锁，JVM就 会认为这次自旋很有可能再次成功，因此允许自旋等待持续相对更长 的时间。</li>
+<li>如果对于某个锁，抢锁线程很少成功获得过，那么JVM将可 能减少自旋时间甚至省略自旋过程，以避免浪费处理器资源。</li>
+</ul>
+<p>JDK 1.6的轻量级锁使用的是普通自旋锁，且需要使用XX:+UseSpinning选项手工开启。JDK 1.7后，轻量级锁使用自适应自旋 锁，JVM启动时自动开启，且自旋时间由JVM自动控制。</p>
+<h4 id="重量级锁"><a href="#重量级锁" class="headerlink" title="重量级锁"></a>重量级锁</h4><p>​		JVM中每个对象都会有一个监视器，监视器和对象一起创建、销 毁。监视器相当于一个用来监视这些线程进入的特殊房间，其义务是 保证（同一时间）只有一个线程可以访问被保护的临界区代码块。本质上，监视器是一种同步工具，也可以说是一种同步机制，监听器主要有两个特点。</p>
+<ul>
+<li>同步。监视器所保护的临界区代码是互斥地执行的。一个监 视器是一个运行许可，任一线程进入临界区代码都需要获得这个许 可，离开时把许可归还。</li>
+<li>协作。监视器提供Signal机制，允许正持有许可的线程暂时 放弃许可进入阻塞等待状态，等待其他线程发送Signal去唤醒；其他 拥有许可的线程可以发送Signal，唤醒正在阻塞等待的线程，让它可 以重新获得许可并启动执行。</li>
+</ul>
+<p>在Hotspot虚拟机中，监视器是由C++类ObjectMonitor实现的，ObjectMonitor的Owner（_owner）、WaitSet（_WaitSet）、 Cxq（_cxq）、EntryList（_EntryList）这几个属性比较关键。ObjectMonitor的WaitSet、Cxq、EntryList这三个队列存放抢夺重量 级锁的线程，而ObjectMonitor的Owner所指向的线程即为获得锁的线 程。</p>
+<ul>
+<li>Cxq：竞争队列（Contention Queue），所有请求锁的线程 首先被放在这个竞争队列中。</li>
+<li>EntryList：Cxq中那些有资格成为候选资源的线程被移动到 EntryList中。</li>
+<li>WaitSet：某个拥有ObjectMonitor的线程在调用 Object.wait()方法之后将被阻塞，然后该线程将被放置在WaitSet链 表中。</li>
+</ul>
+<p>ObjectMonitor的内部抢锁过程如图所示：</p>
+<p><img src="/..%5Cimg%5Cjava%E5%9B%BE%E7%89%87%5CObjectMonitor%E7%9A%84%E5%86%85%E9%83%A8%E6%8A%A2%E9%94%81%E8%BF%87%E7%A8%8B.png"></p>
+<p>(1) Cxq</p>
+<p>​		Cxq并不是一个真正的队列，而是一个由Node及其next指针逻辑构成的虚拟队列。每 次新加入Node会在Cxq的队头进行，通过CAS改变第一个节点的指针为 新增节点，同时设置新增节点的next指向后续节点；从Cxq取得元素 时，会从队尾获取。Cxq结构是一个无锁结构。</p>
+<p>​		在线程进入Cxq前，抢锁线程会先尝试通过CAS自旋获取锁，如果 获取不到，就进入Cxq队列，这明显对于已经进入Cxq队列的线程是不 公平的。因此，synchronized同步块所使用的重量级锁是不公平锁。</p>
+<p>(2) EntryList</p>
+<p>​		EntryList与Cxq在逻辑上都属于等待队列。Cxq会被线程并发访 问，为了降低对Cxq队尾的争用，而建立EntryList。在Owner线程释放 锁时，JVM会从Cxq中迁移线程到EntryList，并会指定EntryList中的 某个线程（一般为Head）为OnDeck Thread（Ready Thread）。 EntryList中的线程作为候选竞争线程而存在。</p>
+<p>(3) OnDeck Thread与Owner Thread</p>
+<p>​		JVM不直接把锁传递给Owner Thread，而是把锁竞争的权利交给 OnDeck Thread，OnDeck需要重新竞争锁。这样虽然牺牲了一些公平 性，但是能极大地提升系统的吞吐量，在JVM中，也把这种选择行为称 为“竞争切换”。</p>
+<p>​		OnDeck Thread获取到锁资源后会变为Owner Thread。无法获得锁 的OnDeck Thread则会依然留在EntryList中，考虑到公平性，OnDeck Thread在EntryList中的位置不发生变化（依然在队头）。</p>
+<p>​		在OnDeck Thread成为Owner的过程中，还有一个不公平的事情， 就是后来的新抢锁线程可能直接通过CAS自旋成为Owner而抢到锁。</p>
+<p>(4) WaitSet</p>
+<p>​		如果Owner线程被Object.wait()方法阻塞，就转移到WaitSet队列 中，直到某个时刻通过Object.notify()或者Object.notifyAll()唤 醒，该线程就会重新进入EntryList中。</p>
+<h4 id="偏向锁、轻量级锁与重量级锁的对比"><a href="#偏向锁、轻量级锁与重量级锁的对比" class="headerlink" title="偏向锁、轻量级锁与重量级锁的对比"></a>偏向锁、轻量级锁与重量级锁的对比</h4><p>synchronized的执行过程：</p>
+<ol>
+<li>线程抢锁时，JVM首先检测内置锁对象Mark Word中的 biased_lock（偏向锁标识）是否设置成1，lock（锁标志位）是否为 01，如果都满足，确认内置锁对象为可偏向状态。</li>
+<li>在内置锁对象确认为可偏向状态之后，JVM检查Mark Word中 的线程ID是否为抢锁线程ID，如果是，就表示抢锁线程处于偏向锁状 态，抢锁线程快速获得锁，开始执行临界区代码。</li>
+<li>如果Mark Word中的线程ID并未指向抢锁线程，就通过CAS操 作竞争锁。如果竞争成功，就将Mark Word中的线程ID设置为抢锁线 程，偏向标志位设置为1，锁标志位设置为01，然后执行临界区代码， 此时内置锁对象处于偏向锁状态。</li>
+<li>如果CAS操作竞争失败，就说明发生了竞争，撤销偏向锁， 进而升级为轻量级锁。</li>
+<li>JVM使用CAS将锁对象的Mark Word替换为抢锁线程的锁记录 指针，如果成功，抢锁线程就获得锁。如果替换失败，就表示其他线 程竞争锁，JVM尝试使用CAS自旋替换抢锁线程的锁记录指针，如果自 旋成功（抢锁成功），那么锁对象依然处于轻量级锁状态。</li>
+<li>如果JVM的CAS替换锁记录指针自旋失败，轻量级锁就膨胀为 重量级锁，后面等待锁的线程也要进入阻塞状态。</li>
+</ol>
+<p>总体来说，偏向锁是在没有发生锁争用的情况下使用的；一旦有 了第二个线程争用锁，偏向锁就会升级为轻量级锁；如果锁争用很激 烈，轻量级锁的CAS自旋到达阈值后，轻量级锁就会升级为重量级锁。</p>
+<p>三种内置锁的对比如图：</p>
+<p><img src="/..%5Cimg%5Cjava%E5%9B%BE%E7%89%87%5C%E4%B8%89%E7%A7%8D%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E5%AF%B9%E6%AF%94.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Mood</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/">http://example.com/2023/03/03/JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Mood的个人博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E9%94%81/">锁</a></div><div class="post_share"><div class="social-share" data-image="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpg" alt="微信"/></a><div class="post-qr-code-desc">微信</div></li><li class="reward-item"><a href="/img/alipay.jpg" target="_blank"><img class="post-qr-code-img" src="/img/alipay.jpg" alt="支付宝"/></a><div class="post-qr-code-desc">支付宝</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2023/03/07/JVM%E4%B9%8BJava%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%AD%98%E6%B4%BB%E5%88%A4%E5%AE%9A%E4%B8%8E%E5%AF%B9%E8%B1%A1%E5%BC%95%E7%94%A8/" title="JVM之Java对象的存活判定与对象引用"><img class="cover" src="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">JVM之Java对象的存活判定与对象引用</div></div></a></div><div class="next-post pull-right"><a href="/2023/02/05/Linux%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" title="Linux常用命令"><img class="cover" src="https://w.wallhaven.cc/full/we/wallhaven-we628p.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Linux常用命令</div></div></a></div></nav><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div class="vcomment" id="vcomment"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://tt.xtt.ovh/imgs/2023/07/20/b61b1bdd18dd8f8e.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mood</div><div class="author-info__description">每一个不曾起舞的早晨，都是对生命的辜负。——尼采</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">26</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">9</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/qmlmood"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/qmlmood" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:moodfm@foxmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">正在开发新功能，请稍后。</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#JUC%E4%B9%8BJava%E5%86%85%E7%BD%AE%E9%94%81%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="toc-number">1.</span> <span class="toc-text">JUC之Java内置锁的核心原理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Java%E5%AF%B9%E8%B1%A1%E7%BB%93%E6%9E%84"><span class="toc-number">1.1.</span> <span class="toc-text">Java对象结构</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E5%A4%B4"><span class="toc-number">1.1.1.</span> <span class="toc-text">对象头</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E4%BD%93"><span class="toc-number">1.1.2.</span> <span class="toc-text">对象体</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AF%B9%E9%BD%90%E5%AD%97%E8%8A%82"><span class="toc-number">1.1.3.</span> <span class="toc-text">对齐字节</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Mark-Word%E7%9A%84%E7%BB%93%E6%9E%84%E4%BF%A1%E6%81%AF"><span class="toc-number">1.2.</span> <span class="toc-text">Mark Word的结构信息</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#64%E4%BD%8DMark-Word%E7%9A%84%E6%9E%84%E6%88%90"><span class="toc-number">1.2.1.</span> <span class="toc-text">64位Mark Word的构成</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81"><span class="toc-number">1.3.</span> <span class="toc-text">偏向锁</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81%E7%9A%84%E8%AE%BE%E7%BD%AE"><span class="toc-number">1.3.1.</span> <span class="toc-text">偏向锁的设置</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81%E7%9A%84%E9%87%8D%E5%81%8F%E5%90%91"><span class="toc-number">1.3.2.</span> <span class="toc-text">偏向锁的重偏向</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81%E7%9A%84%E6%92%A4%E9%94%80"><span class="toc-number">1.3.3.</span> <span class="toc-text">偏向锁的撤销</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81%E7%9A%84%E8%86%A8%E8%83%80"><span class="toc-number">1.3.4.</span> <span class="toc-text">偏向锁的膨胀</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81"><span class="toc-number">1.4.</span> <span class="toc-text">轻量级锁</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B"><span class="toc-number">1.4.1.</span> <span class="toc-text">执行过程</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81%E7%9A%84%E5%88%86%E7%B1%BB"><span class="toc-number">1.4.2.</span> <span class="toc-text">轻量级锁的分类</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%99%AE%E9%80%9A%E8%87%AA%E6%97%8B%E9%94%81"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">普通自旋锁</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E8%87%AA%E9%80%82%E5%BA%94%E8%87%AA%E6%97%8B%E9%94%81"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">自适应自旋锁</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%87%8D%E9%87%8F%E7%BA%A7%E9%94%81"><span class="toc-number">1.5.</span> <span class="toc-text">重量级锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81%E3%80%81%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81%E4%B8%8E%E9%87%8D%E9%87%8F%E7%BA%A7%E9%94%81%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="toc-number">1.6.</span> <span class="toc-text">偏向锁、轻量级锁与重量级锁的对比</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2023/07/21/ArrayList%E7%9A%84%E6%89%A9%E5%AE%B9%E6%9C%BA%E5%88%B6/" title="ArrayList的扩容机制"><img src="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="ArrayList的扩容机制"/></a><div class="content"><a class="title" href="/2023/07/21/ArrayList%E7%9A%84%E6%89%A9%E5%AE%B9%E6%9C%BA%E5%88%B6/" title="ArrayList的扩容机制">ArrayList的扩容机制</a><time datetime="2023-07-21T03:24:56.000Z" title="发表于 2023-07-21 11:24:56">2023-07-21</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2023/07/19/hello-world/" title="Hello World"><img src="https://w.wallhaven.cc/full/kx/wallhaven-kx2k76.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hello World"/></a><div class="content"><a class="title" href="/2023/07/19/hello-world/" title="Hello World">Hello World</a><time datetime="2023-07-19T07:56:16.000Z" title="发表于 2023-07-19 15:56:16">2023-07-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2023/07/17/RabbitMQ/" title="RabbitMQ"><img src="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="RabbitMQ"/></a><div class="content"><a class="title" href="/2023/07/17/RabbitMQ/" title="RabbitMQ">RabbitMQ</a><time datetime="2023-07-17T03:24:56.000Z" title="发表于 2023-07-17 11:24:56">2023-07-17</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2023/07/12/Nginx/" title="Nginx"><img src="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Nginx"/></a><div class="content"><a class="title" href="/2023/07/12/Nginx/" title="Nginx">Nginx</a><time datetime="2023-07-12T03:24:56.000Z" title="发表于 2023-07-12 11:24:56">2023-07-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2023/07/01/%E4%BD%BF%E7%94%A8docker%E5%92%8Cminio%E5%AE%9E%E7%8E%B0%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8/" title="使用docker和minio实现对象存储"><img src="https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="使用docker和minio实现对象存储"/></a><div class="content"><a class="title" href="/2023/07/01/%E4%BD%BF%E7%94%A8docker%E5%92%8Cminio%E5%AE%9E%E7%8E%B0%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8/" title="使用docker和minio实现对象存储">使用docker和minio实现对象存储</a><time datetime="2023-07-01T03:22:41.000Z" title="发表于 2023-07-01 11:22:41">2023-07-01</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url('https://w.wallhaven.cc/full/x6/wallhaven-x6pl9v.jpg')"><div id="footer-wrap"><div class="copyright">&copy;2023 By Mood</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a target="_blank" rel="noopener" href="https://qmlmood.github.io/">blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.autoSpacingPage()
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.autoSpacingPage()
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><div class="js-pjax"><script>(() => {
+  const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+  if ($mermaid.length === 0) return
+  const runMermaid = () => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+    Array.from($mermaid).forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+      const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+      const mermaidID = 'mermaid-' + index
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+
+      const renderV10 = () => {
+        renderFn.then(({svg}) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svg)
+        })
+      }
+
+      const renderV9 = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+      }
+
+      typeof renderFn === 'string' ? renderV9(renderFn) : renderV10()
+    })
+  }
+
+  const loadMermaid = () => {
+    window.loadMermaid ? runMermaid() : getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaid)
+  }
+
+  btf.addModeChange('mermaid', runMermaid)
+
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script><script>(() => {
+  function abcjsInit() {
+    function abcjsFn() {
+      for (let abcContainer of document.getElementsByClassName("abc-music-sheet")) {
+        ABCJS.renderAbc(abcContainer, abcContainer.innerHTML, {responsive: 'resize'})
+      }
+    }
+    
+    typeof ABCJS === 'object' ? abcjsFn()
+      : getScript('https://cdn.jsdelivr.net/npm/abcjs/dist/abcjs-basic-min.min.js').then(abcjsFn)
+  }
+
+  window.pjax ? abcjsInit() : document.addEventListener('DOMContentLoaded', abcjsInit)
+})()</script><script>function loadValine () {
+  function initValine () {
+    const valine = new Valine(Object.assign({
+      el: '#vcomment',
+      appId: '4OljpK4q1YTcqqKfXFI1u0wa-gzGzoHsz',
+      appKey: '1OvnueVRZwSqJU29pYlg8zDl',
+      avatar: 'monsterid',
+      serverURLs: '',
+      emojiMaps: "",
+      path: window.location.pathname,
+      visitor: true
+    }, null))
+  }
+
+  if (typeof Valine === 'function') initValine() 
+  else getScript('https://cdn.jsdelivr.net/npm/valine/dist/Valine.min.js').then(initValine)
+}
+
+if ('Valine' === 'Valine' || !false) {
+  if (false) btf.loadComment(document.getElementById('vcomment'),loadValine)
+  else setTimeout(loadValine, 0)
+} else {
+  function loadOtherComment () {
+    loadValine()
+  }
+}</script></div><script src="https://cdn.jsdelivr.net/npm/blueimp-md5/js/md5.min.js"></script><script>window.addEventListener('load', () => {
+  const changeContent = (content) => {
+    if (content === '') return content
+
+    content = content.replace(/<img.*?src="(.*?)"?[^\>]+>/ig, '[图片]') // replace image link
+    content = content.replace(/<a[^>]+?href=["']?([^"']+)["']?[^>]*>([^<]+)<\/a>/gi, '[链接]') // replace url
+    content = content.replace(/<pre><code>.*?<\/pre>/gi, '[代码]') // replace code
+    content = content.replace(/<[^>]+>/g,"") // remove html tag
+
+    if (content.length > 150) {
+      content = content.substring(0,150) + '...'
+    }
+    return content
+  }
+
+  const getIcon = (icon, mail) => {
+    if (icon) return icon
+    let defaultIcon = '?d=monsterid'
+    let iconUrl = `https://gravatar.loli.net/avatar/${md5(mail.toLowerCase()) + defaultIcon}`
+    return iconUrl
+  }
+
+  const generateHtml = array => {
+    let result = ''
+
+    if (array.length) {
+      for (let i = 0; i < array.length; i++) {
+        result += '<div class=\'aside-list-item\'>'
+
+        if (true) {
+          const name = 'src'
+          result += `<a href='${array[i].url}' class='thumbnail'><img ${name}='${array[i].avatar}' alt='${array[i].nick}'></a>`
+        }
+
+        result += `<div class='content'>
+        <a class='comment' href='${array[i].url}' title='${array[i].content}'>${array[i].content}</a>
+        <div class='name'><span>${array[i].nick} / </span><time datetime="${array[i].date}">${btf.diffDate(array[i].date, true)}</time></div>
+        </div></div>`
+      }
+    } else {
+      result += '没有评论'
+    }
+
+    let $dom = document.querySelector('#card-newest-comments .aside-list')
+    $dom.innerHTML= result
+    window.lazyLoadInstance && window.lazyLoadInstance.update()
+    window.pjax && window.pjax.refresh($dom)
+  }
+
+  const getComment = () => {
+    const serverURL = 'https://4OljpK4q.api.lncldglobal.com'
+
+    var settings = {
+      "method": "GET",
+      "headers": {
+        "X-LC-Id": '4OljpK4q1YTcqqKfXFI1u0wa-gzGzoHsz',
+        "X-LC-Key": '1OvnueVRZwSqJU29pYlg8zDl',
+        "Content-Type": "application/json"
+      },
+    }
+
+    fetch(`${serverURL}/1.1/classes/Comment?limit=6&order=-createdAt`,settings)
+      .then(response => response.json())
+      .then(data => {
+        const valineArray = data.results.map(function (e) {
+          return {
+            'avatar': getIcon(e.QQAvatar, e.mail),
+            'content': changeContent(e.comment),
+            'nick': e.nick,
+            'url': e.url + '#' + e.objectId,
+            'date': e.updatedAt,
+          }
+        })
+        saveToLocal.set('valine-newest-comments', JSON.stringify(valineArray), 10/(60*24))
+        generateHtml(valineArray)
+      }).catch(e => {
+        const $dom = document.querySelector('#card-newest-comments .aside-list')
+        $dom.textContent= "无法获取评论，请确认相关配置是否正确"
+      }) 
+  }
+
+  const newestCommentInit = () => {
+    if (document.querySelector('#card-newest-comments .aside-list')) {
+      const data = saveToLocal.get('valine-newest-comments')
+      if (data) {
+        generateHtml(JSON.parse(data))
+      } else {
+        getComment()
+      }
+    }
+  }
+
+  newestCommentInit()
+  document.addEventListener('pjax:complete', newestCommentInit)
+})</script><div class="aplayer no-destroy" data-id="60198" data-server="netease" data-type="playlist" data-fixed="true" data-autoplay="true"> </div><script defer="defer" id="fluttering_ribbon" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="99" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-nest.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/activate-power-mode.min.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = true;
+POWERMODE.mobile = false;
+document.body.addEventListener('input', POWERMODE);
+</script><script id="click-show-text" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/click-show-text.min.js" data-mobile="false" data-text="I,LOVE,YOU" data-fontsize="15px" data-random="false" async="async"></script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/metingjs/dist/Meting.min.js"></script><script src="https://cdn.jsdelivr.net/npm/pjax/pjax.min.js"></script><script>let pjaxSelectors = ["head > title","#config-diff","#body-wrap","#rightside-config-hide","#rightside-config-show",".js-pjax"]
+
+var pjax = new Pjax({
+  elements: 'a:not([target="_blank"]):not([href="/music/"]):not([href="/no-pjax/"])',
+  selectors: pjaxSelectors,
+  cacheBust: false,
+  analytics: false,
+  scrollRestoration: false
+})
+
+document.addEventListener('pjax:send', function () {
+
+  // removeEventListener scroll 
+  window.tocScrollFn && window.removeEventListener('scroll', window.tocScrollFn)
+  window.scrollCollect && window.removeEventListener('scroll', scrollCollect)
+
+  document.getElementById('rightside').style.cssText = "opacity: ''; transform: ''"
+  
+  if (window.aplayers) {
+    for (let i = 0; i < window.aplayers.length; i++) {
+      if (!window.aplayers[i].options.fixed) {
+        window.aplayers[i].destroy()
+      }
+    }
+  }
+
+  typeof typed === 'object' && typed.destroy()
+
+  //reset readmode
+  const $bodyClassList = document.body.classList
+  $bodyClassList.contains('read-mode') && $bodyClassList.remove('read-mode')
+
+  typeof disqusjs === 'object' && disqusjs.destroy()
+})
+
+document.addEventListener('pjax:complete', function () {
+  window.refreshFn()
+
+  document.querySelectorAll('script[data-pjax]').forEach(item => {
+    const newScript = document.createElement('script')
+    const content = item.text || item.textContent || item.innerHTML || ""
+    Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+    newScript.appendChild(document.createTextNode(content))
+    item.parentNode.replaceChild(newScript, item)
+  })
+
+  GLOBAL_CONFIG.islazyload && window.lazyLoadInstance.update()
+
+  typeof panguInit === 'function' && panguInit()
+
+  // google analytics
+  typeof gtag === 'function' && gtag('config', '', {'page_path': window.location.pathname});
+
+  // baidu analytics
+  typeof _hmt === 'object' && _hmt.push(['_trackPageview',window.location.pathname]);
+
+  typeof loadMeting === 'function' && document.getElementsByClassName('aplayer').length && loadMeting()
+
+  // prismjs
+  typeof Prism === 'object' && Prism.highlightAll()
+})
+
+document.addEventListener('pjax:error', (e) => {
+  if (e.request.status === 404) {
+    pjax.loadUrl('/404.html')
+  }
+})</script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
