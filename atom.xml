@@ -6,7 +6,7 @@
   <link href="http://example.com/atom.xml" rel="self"/>
   
   <link href="http://example.com/"/>
-  <updated>2023-07-23T08:23:19.893Z</updated>
+  <updated>2023-09-17T02:37:51.376Z</updated>
   <id>http://example.com/</id>
   
   <author>
@@ -15,6 +15,30 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>springcloud整合minio时出现的错误</title>
+    <link href="http://example.com/2023/09/17/springcloud%E6%95%B4%E5%90%88minio%E6%97%B6%E5%87%BA%E7%8E%B0%E7%9A%84%E9%94%99%E8%AF%AF/"/>
+    <id>http://example.com/2023/09/17/springcloud%E6%95%B4%E5%90%88minio%E6%97%B6%E5%87%BA%E7%8E%B0%E7%9A%84%E9%94%99%E8%AF%AF/</id>
+    <published>2023-09-17T03:24:56.000Z</published>
+    <updated>2023-09-17T02:37:51.376Z</updated>
+    
+    <content type="html"><![CDATA[<h3 id="Action-Correct-the-classpath-of-your-application-so-that-it-contains-compatible-versions-of-the-classes-io-minio-S3Base-and-okhttp3-RequestBody"><a href="#Action-Correct-the-classpath-of-your-application-so-that-it-contains-compatible-versions-of-the-classes-io-minio-S3Base-and-okhttp3-RequestBody" class="headerlink" title="Action:Correct the classpath of your application so that it contains compatible versions of the classes io.minio.S3Base and okhttp3.RequestBody"></a>Action:Correct the classpath of your application so that it contains compatible versions of the classes io.minio.S3Base and okhttp3.RequestBody</h3><p>这个错误是我在整合minio时报的错，说实话遇到这个错误我还是很头大的，因为之前在springboot项目中整合过一次minio，当时报的错误跟这个差不多，都是okhttp版本依赖问题，之前是因为，我的minio依赖里面自带的okhttp包的版本过低，需要将minio包中的okhttp包剔除，自己手动引进一个更高版本的okhttp包。</p><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--maven引入minio排除okhttp依赖并添加高版本的okhttp依赖--&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.minio<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>minio<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">version</span>&gt;</span>8.5.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">exclusions</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;<span class="name">exclusion</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.squareup.okhttp3<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>okhttp<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;/<span class="name">exclusion</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;/<span class="name">exclusions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.squareup.okhttp3<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>okhttp<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">version</span>&gt;</span>4.9.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure><p>就像上述代码一样，这样就可以解决okhttp版本的问题。但是这次报的错误跟上次几乎一样，追根揭底也是okhttp包版本问题，这次是版本冲突问题。</p><p>这就是这个错误奇怪的地方，发现是版本冲突后，我查看了这个项目的版本依赖，但是没有发现有关okhttp的版本冲突存在。</p><p>又从头看了一下报错信息，发现了一个奇怪的地方。</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">The called method&#x27;s class, okhttp3.RequestBody, is available from the following locations:</span><br><span class="line"></span><br><span class="line">    jar:file:/D:/repository/com/squareup/okhttp3/okhttp/3.14.9/okhttp-3.14.9.jar!/okhttp3/RequestBody.class</span><br><span class="line"></span><br><span class="line">The called method&#x27;s class hierarchy was loaded from the following locations:</span><br><span class="line"></span><br><span class="line">    okhttp3.RequestBody: file:/D:/repository/com/squareup/okhttp3/okhttp/3.14.9/okhttp-3.14.9.jar</span><br></pre></td></tr></table></figure><p>它不知道从哪给我加载了一个3.14.9版本的okhttp，而我引入的依赖是4.9.0的版本，然后我又看了一下我项目引入的依赖库，确实找到了两个版本的okhttp。</p><p><img src="https://tt.xtt.ovh/imgs/2023/09/17/29d5e48c5fcd2cac.png" alt="okhttp版本冲突"></p><p>然后我就开始找这个3.14.9版本的okhttp是从哪里引进来的，自己折腾了一大晌还是没有找到，后来就放弃了，等到第二天再来看这个错误的时候，在这个okhttp依赖旁边发现了这个</p><p><img src="https://tt.xtt.ovh/imgs/2023/09/17/20aac83bc9df3c5b.png" alt="okhttpmaven依赖"></p><p>本来也是没发现什么异常，就是实在没法了点了一下，就进到了这里</p><p><img src="https://tt.xtt.ovh/imgs/2023/09/17/171cc12cd1368c65.png" alt="okhttp依赖版本控制"></p><p>嘿，搁这找到了，往上翻，找到他的版本号</p><p><img src="https://tt.xtt.ovh/imgs/2023/09/17/37239131e740b369.png" alt="okhttp版本号"></p><p>好家伙，原来搁这了，那现在就是想办法把这个版本号给覆盖掉就行了，在我的这个项目的父工程里加入这个okhttp的版本号，在这个项目里引用这个版本号，重新启动，问题解决。</p><p><img src="https://tt.xtt.ovh/imgs/2023/09/17/f5d5fd4152991e2e.png" alt="版本号指定"></p><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--maven引入minio排除okhttp依赖并添加高版本的okhttp依赖--&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.minio<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>minio<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">version</span>&gt;</span>8.5.2<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">exclusions</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;<span class="name">exclusion</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.squareup.okhttp3<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">                    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>okhttp<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">                <span class="tag">&lt;/<span class="name">exclusion</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;/<span class="name">exclusions</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.squareup.okhttp3<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>okhttp<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">version</span>&gt;</span>$&#123;okhttp3.version&#125;<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h3 id=&quot;Action-Correct-the-classpath-of-your-application-so-that-it-contains-compatible-versions-of-the-classes-io-minio-S3Base-and-okhttp3-</summary>
+      
+    
+    
+    
+    <category term="minio" scheme="http://example.com/categories/minio/"/>
+    
+    
+    <category term="minio" scheme="http://example.com/tags/minio/"/>
+    
+  </entry>
   
   <entry>
     <title>ArrayList的扩容机制</title>
@@ -480,31 +504,6 @@
     
     
     <category term="类加载" scheme="http://example.com/tags/%E7%B1%BB%E5%8A%A0%E8%BD%BD/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>JVM之Java垃圾收集算法</title>
-    <link href="http://example.com/2023/03/13/JVM%E4%B9%8BJava%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E7%AE%97%E6%B3%95/"/>
-    <id>http://example.com/2023/03/13/JVM%E4%B9%8BJava%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E7%AE%97%E6%B3%95/</id>
-    <published>2023-03-13T03:24:56.000Z</published>
-    <updated>2023-07-23T09:20:20.699Z</updated>
-    
-    <content type="html"><![CDATA[<p>[TOC]</p><h3 id="JVM之Java垃圾收集算法"><a href="#JVM之Java垃圾收集算法" class="headerlink" title="JVM之Java垃圾收集算法"></a>JVM之Java垃圾收集算法</h3><h5 id="标记清除算法"><a href="#标记清除算法" class="headerlink" title="标记清除算法"></a>标记清除算法</h5><p>分为两部分：“标记”和“清除”。首先标记出所有需要回收的对象，在标记完成之后，统一回收掉所有被标记的对象；也可以反过来，标记存活的对象，统一回收未标记的对象。标记过程就是对象是否属于垃圾的判定过程。</p><p>标记清除算法有两个主要的缺点：</p><ul><li>执行效率不稳定，如果Java堆中包含大量对象，而且大部分都是需要回收的，这是就必须进行大量的标记清除动作，导致标记和清除这两个过程的执行效率都随着对象数量的增长而降低。</li><li>内存空间碎片化的问题，标记清除之后会有大量不连续的内存碎片，空间碎片太多可能会导致之后程序在运行时需要分配较大对象时无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。</li></ul><p>算法执行过程如图：</p><p><img src="https://tt.xtt.ovh/imgs/2023/07/23/9fbd6094c5d71486.png"></p><h5 id="标记复制算法"><a href="#标记复制算法" class="headerlink" title="标记复制算法"></a>标记复制算法</h5><p>又称复制算法。该算法将内存分为两块相等大小的区域，每次使用一块，一块内存使用完之后，就将存活的对象复制到另一块内存区域上，然后将这一整块已经使用过的内存给整体清理掉。复制算法虽然解决了标记清除算法产生碎片化空间的问题，但是他也有两个缺点：</p><ul><li>因为复制算法是复制的存活对象，如果存活的对象占大多数，就会有一大笔复制对象的开支</li><li>复制算法将内存分为两块，每次只使用一块，另一块则不使用，相当于将可用内存缩小为原来的一半，产生了大量的空间浪费</li></ul><p>算法执行过程图：</p><p><img src="https://tt.xtt.ovh/imgs/2023/07/23/b69bf4d8509ca010.png"></p><p>在1989年，Andrew Appel针对具备“朝生夕灭”特点的对象，提出了一种更优化的半区复制分代策 略，现在称为“Appel式回收”。HotSpot虚拟机的Serial、ParNew等新生代收集器均采用了这种策略来设 计新生代的内存布局。Appel式回收的具体做法是把新生代分为一块较大的Eden空间和两块较小的 Survivor空间，每次分配内存只使用Eden和其中一块Survivor。发生垃圾搜集时，将Eden和Survivor中仍 然存活的对象一次性复制到另外一块Survivor空间上，然后直接清理掉Eden和已用过的那块Survivor空 间。</p><p>HotSpot虚拟机默认Eden和Survivor的大小比例是8∶1，也即每次新生代中可用内存空间为整个新 生代容量的90%（Eden的80%加上一个Survivor的10%），只有一个Survivor空间，即10%的新生代是会 被“浪费”的。当然，98%的对象可被回收仅仅是“普通场景”下测得的数据，任何人都没有办法百分百 保证每次回收都只有不多于10%的对象存活，因此Appel式回收还有一个充当罕见情况的“逃生门”的安 全设计，当Survivor空间不足以容纳一次Minor GC之后存活的对象时，就需要依赖其他内存区域（实 际上大多就是老年代）进行分配担保（Handle Promotion）。</p><h5 id="标记整理算法"><a href="#标记整理算法" class="headerlink" title="标记整理算法"></a>标记整理算法</h5><p>该算法的标记阶段与“标记清除算法”一样，但之后不是直接对对象进行清理，而是让所有存活的对象都向内存空间一端移动，然后直接清理掉边界以外的内存。</p><p>算法执行过程图：</p><p><img src="https://tt.xtt.ovh/imgs/2023/07/23/34867279e0533aee.png"></p><p>标记整理算法与标记清除算法的差异在于前者是一种移动式的算法，而后者式非移动式的。是否移动回收后的存活对象是一项优缺点并存的风险决策：</p><p>如果移动存活对象，尤其是在老年代这种每次回收都有大量对象存活区域，移动存活对象并更新 所有引用这些对象的地方将会是一种极为负重的操作，而且这种对象移动操作必须全程暂停用户应用 程序才能进行，这就更加让使用者不得不小心翼翼地权衡其弊端了，像这样的停顿被最初的虚拟机 设计者形象地描述为“Stop The World” 。</p><p>但如果跟标记-清除算法那样完全不考虑移动和整理存活对象的话，弥散于堆中的存活对象导致的 空间碎片化问题就只能依赖更为复杂的内存分配器和内存访问器来解决。</p>]]></content>
-    
-    
-      
-      
-    <summary type="html">&lt;p&gt;[TOC]&lt;/p&gt;
-&lt;h3 id=&quot;JVM之Java垃圾收集算法&quot;&gt;&lt;a href=&quot;#JVM之Java垃圾收集算法&quot; class=&quot;headerlink&quot; title=&quot;JVM之Java垃圾收集算法&quot;&gt;&lt;/a&gt;JVM之Java垃圾收集算法&lt;/h3&gt;&lt;h5 id=&quot;标记清除</summary>
-      
-    
-    
-    
-    <category term="JVM" scheme="http://example.com/categories/JVM/"/>
-    
-    
-    <category term="垃圾收集" scheme="http://example.com/tags/%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86/"/>
     
   </entry>
   
